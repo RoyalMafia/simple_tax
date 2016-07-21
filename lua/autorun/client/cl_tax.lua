@@ -16,9 +16,9 @@ end)
 net.Receive("tax_info", function(len, pl) 
 	economy.money = net.ReadInt(32)
 	economy.total = net.ReadInt(32)
-	economy.prct  = net.ReadInt(32)
+	economy.prct  = net.ReadFloat()
 	economy.tax   = net.ReadInt(32)
-	taxAmount     = net.ReadInt(32)
+	taxAmount     = net.ReadFloat()
 end)
 
 surface.CreateFont( "F1", {font = "DermaLarge",size = 18,weight = 100,blursize = 0,scanlines = 0,})
@@ -50,9 +50,8 @@ function DrawTaxInfo()
 		draw.RoundedBox( 0, 10, 37, w - 20, 35, Color(211,100,59, 100))
 		draw.RoundedBox( 0, 10, 35, w - 20, 35, Color(211,100,59))
 
-		cPrct = cPrct + math.Round(((economy.prct) - cPrct)/20)
 		draw.RoundedBox( 0, 10, 35, math.Clamp(economy.prct*4.80, 0, 480), 37, Color(0,0,0, 100))
-		draw.SimpleText( "You make up for "..string.sub(tostring(economy.prct), 1, 3).."% of the Economy", "F1", w / 2, 52, Color(255,255,255,110), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER )
+		draw.SimpleText( "You make up for "..string.sub(tostring(economy.prct), 0, 4).."% of the Economy", "F1", w / 2, 52, Color(255,255,255,110), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER )
 
 		--[[ Tax Bar ]]--
 		draw.RoundedBox( 0, 10, 82, w - 20, 35, Color(148,199,182, 100))
@@ -60,7 +59,7 @@ function DrawTaxInfo()
 
 		if economy.money > 10000 then
 			draw.RoundedBox( 0, 10, 80, math.Clamp(( (economy.tax*30) / economy.total * 100)*4.80, 0, 480), 37, Color(0,0,0, 100))
-			draw.SimpleText( "You pay "..DarkRP.formatMoney(economy.tax).." ("..taxAmount.."%) towards Tax", "F1", w / 2, 97, Color(255,255,255,200), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER )
+			draw.SimpleText( "You pay "..DarkRP.formatMoney(economy.tax).." ("..string.sub(tostring(taxAmount), 0, 4).."%) towards Tax", "F1", w / 2, 97, Color(255,255,255,200), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER )
 		else
 			draw.SimpleText( "You don't have enough money to pay Tax", "F1", w / 2, 97, Color(255,255,255,200), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER )
 		end

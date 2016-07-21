@@ -8,8 +8,8 @@ local taxDelay = taxConfig.delay
 local minAmount = taxConfig.min
 
 -- Don't touch any of this stuff :)
-local curTime = CurTime()
-local economy 		= {}
+local curTime   = CurTime()
+local economy 	= {}
 economy.ply 	= {}
 economy.money 	= {}
 economy.total   = {}
@@ -54,13 +54,13 @@ net.Receive("tax_request", function(len, pl)
 			net.Start("tax_info")
 				net.WriteInt(economy.money[x], 32)
 				net.WriteInt(economy.total[1], 32)
-				net.WriteInt(economy.prct[x], 32)
+				net.WriteFloat(economy.prct[x])
 				if #economy.ply >= 2 then 
 					net.WriteInt( math.Round( ( ( (taxAmount + economy.prct[x]/10) /100) * economy.money[x])/30), 32)
-					net.WriteInt(taxAmount + economy.prct[x]/10, 32) 
+					net.WriteFloat((taxAmount/30) + economy.prct[x]/10) 
 				else
-					net.WriteInt( math.Round( ( ( (taxAmount/100) * economy.money[x])/30)), 32)
-					net.WriteInt(taxAmount, 32) 
+					net.WriteInt( math.Round( ( ( economy.money[x] / taxAmount)/30)), 32)
+					net.WriteFloat(taxAmount/30) 
 				end
 			net.Send(pl)
 		end
@@ -74,7 +74,7 @@ function TaxPayDay()
 	if CurTime() > curTime + taxDelay then
 		for x = 1, #economy.ply do
 
-			if #economy.ply >= 2 then DeductAmount = math.Round( ( ( (taxAmount + economy.prct[x]/10) /100) * economy.money[x])/30 ) else DeductAmount = taxAmount end
+			if #economy.ply >= 2 then DeductAmount = math.Round( ( ( (taxAmount + economy.prct[x]/10) /100) * economy.money[x])/30 ) else DeductAmount = math.Round( ( ( economy.money[x] / taxAmount)/30)) end
 
 			if economy.canTax[x] then
 				economy.ply[x]:addMoney(-DeductAmount)
