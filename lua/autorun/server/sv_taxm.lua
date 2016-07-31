@@ -15,24 +15,52 @@ economy.money 	= {}
 economy.total   = {}
 economy.prct    = {}
 economy.canTax  = {}
+local tax = {}
+tax.GroupEligible = {}
+tax.earnings = {}
+tax.tempearnings = {}
 
 function UpdateTable()
 	TempTotal = 0
-	table.Empty(economy.ply)
-	table.Empty(economy.money)
 	table.Empty(economy.total)
 	table.Empty(economy.prct)
-	table.Empty(economy.canTax)
 
 	for x = 1, #player.GetAll() do
 		ply = player.GetAll()[x]
-		table.insert( economy.ply, ply )
-		table.insert( economy.money, ply.DarkRPVars.money )
 
-		if economy.money[x] > minAmount then
-			table.insert( economy.canTax, true)
+		if tax.earnings[x] == nil then
+			table.insert( tax.earnings, 0)
+			table.insert( tax.GroupEligible, 1)
+		elseif economy.money[x] != nil then
+			dif = ply.DarkRPVars.money - economy.money[x]
+			tax.earnings[x] = tax.earnings[x] + dif
+			for i = 1, #taxConfig.Groups do
+				if tax.tempearnings[x] == nil and tax.earnings[x] >= taxConfig.GroupBaseMoney * (taxConfig.GroupMultiplier * i) then
+					tax.GroupEligible[x] = i
+				elseif tax.tempearnings[x] != nil and tax.tempearnings[x] >= taxConfig.GroupBaseMoney * (taxConfig.GroupMultiplier * i) then
+					tax.GroupEligible[x] = i
+				end
+			end
+		end
+
+		if economy.ply[x] == nil then
+			table.insert( economy.ply, ply )
+			table.insert( economy.money, ply.DarkRPVars.money )
+
+			if economy.money[x] > minAmount then
+				table.insert( economy.canTax, true)
+			else
+				table.insert( economy.canTax, false)
+			end
 		else
-			table.insert( economy.canTax, false)
+			economy.ply[x] = ply
+			economy.money[x] = ply.DarkRPVars.money
+
+			if economy.money[x] > minAmount then
+				economy.canTax[x] = true
+			else
+				economy.canTax[x] = false
+			end
 		end
 
 		TempTotal = TempTotal + ply.DarkRPVars.money
@@ -48,6 +76,21 @@ hook.Add("PlayerConnect", "UpdateOnConnect", function( name, ip )
 	UpdateTable()
 end)
 
+function removedPly(ply)
+	for x = 1, #economy.ply do
+		if economy.ply[x] == ply then
+			table.remove(economy.ply, x)
+			table.remove(economy.money, x)
+			table.remove(economy.canTax, x)
+			table.remove(economy.prct, x)
+			table.remove(tax.earnings, x)
+			table.remove(tax.GroupEligible, x)
+		end
+	end
+end
+
+hook.Add("PlayerDisconnected", "RemovePly", removedPly(ply))
+
 net.Receive("tax_request", function(len, pl)
 	for x = 1, #economy.ply do
 		if economy.ply[x] == pl then
@@ -55,13 +98,14 @@ net.Receive("tax_request", function(len, pl)
 				net.WriteInt(economy.money[x], 32)
 				net.WriteInt(economy.total[1], 32)
 				net.WriteFloat(economy.prct[x])
-				if #economy.ply >= 2 then 
-					net.WriteInt( math.Round( ( ( (taxAmount + economy.prct[x]/10) /100) * economy.money[x])/30), 32)
-					net.WriteFloat((taxAmount/30) + economy.prct[x]/10) 
+				if #economy.ply >= 2 then
+					net.WriteInt( math.Round( ( ( ( (taxAmount + (taxConfig.GroupMultiplier/2.5 * tax.GroupEligible[x])) + economy.prct[x]/10) /100 ) * economy.money[x])/30), 32)
+					net.WriteFloat( ( ((taxAmount + (taxConfig.GroupMultiplier/2.5 * tax.GroupEligible[x]))) + economy.prct[x]/10 )/30)
 				else
 					net.WriteInt( math.Round( ( ( economy.money[x] / taxAmount)/30)), 32)
 					net.WriteFloat(taxAmount/30) 
 				end
+				net.WriteString(tostring(taxConfig.Groups[tax.GroupEligible[x]]))
 			net.Send(pl)
 		end
 	end
@@ -74,7 +118,22 @@ function TaxPayDay()
 	if CurTime() > curTime + taxDelay then
 		for x = 1, #economy.ply do
 
-			if #economy.ply >= 2 then DeductAmount = math.Round( ( ( (taxAmount + economy.prct[x]/10) /100) * economy.money[x])/30 ) else DeductAmount = math.Round( ( ( economy.money[x] / taxAmount)/30)) end
+			if tax.tempearnings[x] == nil then
+				tax.tempearnings[x] = tax.earnings[x]
+			else
+				dif = tax.earnings[x] - tax.tempearnings[x]
+				if dif < tax.tempearnings[x] / 1.3 then
+					tax.tempearnings[x] = tax.tempearnings[x] / 1.3
+				else
+					tax.tempearnings[x] = tax.tempearnings[x] + dif
+				end
+			end
+
+			if #economy.ply >= 2 then 
+				DeductAmount = math.Round( ( ( ( (taxAmount + (taxConfig.GroupMultiplier * tax.GroupEligible[x])) + economy.prct[x]/10) /100 ) * economy.money[x])/30)
+			else 
+				DeductAmount = math.Round( ( ( economy.money[x] / (taxAmount + (taxConfig.GroupMultiplier * tax.GroupEligible[x])))/30)) 
+			end
 
 			if economy.canTax[x] then
 				economy.ply[x]:addMoney(-DeductAmount)
