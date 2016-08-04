@@ -6,13 +6,6 @@ local economy 		= {}
 	economy.tax     = 0
 menuOpen = false
 
-hook.Add("Think", "GetInfo", function()
-	if menuOpen then
-		net.Start("tax_request")
-		net.SendToServer()
-	end
-end)
-
 net.Receive("tax_info", function(len, pl) 
 	economy.money = net.ReadInt(32)
 	economy.total = net.ReadInt(32)
@@ -135,6 +128,8 @@ hook.Add( "OnPlayerChat", "DrawTax", function( ply, strText, bTeam, bDead )
 	strText = string.lower( strText )
 
 	if strText == "!tax" and ply == LocalPlayer() then
+		net.Start("tax_request")
+		net.SendToServer()
 		DrawTaxInfo()
 		return true
 	end
